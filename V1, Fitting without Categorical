@@ -1,0 +1,105 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Sep 13 16:46:58 2020
+
+@author: seelc
+"""
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.impute import SimpleImputer
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+from sklearn.model_selection import train_test_split
+
+df = pd.read_csv("C:\\Users\\seelc\\OneDrive\\Desktop\\Projects\\Housing Prices Kaggle\\train.csv")
+
+#Cleaning data:
+#nan lot frontage should really be 0
+df["LotFrontage"].fillna(0, inplace = True)
+
+
+#Dropping all columns except numeric
+smallest_df = df.copy(deep = True)
+smallest_df = smallest_df.fillna(0)
+smallest_df = smallest_df.select_dtypes(exclude = ['object'])
+
+
+#Creating a correlation matrix for the sale price
+correlation_matrix = smallest_df.corr()
+print(correlation_matrix["SalePrice"].sort_values(ascending=False))
+
+#Exploring the data with a couple histograms
+
+plt.hist(smallest_df["SalePrice"])
+
+
+
+#Creating visualizations for input variables
+figure, axes = plt.subplots(3, 3)
+
+axes[2,2].hist(smallest_df["SalePrice"])
+axes[2,2].set_title("SalePrice")
+axes[2,1].hist(smallest_df["LotArea"])
+axes[2,1].set_title("LotArea")
+axes[2,0].hist(smallest_df["OverallQual"])
+axes[2,0].set_title("OverallQual")
+
+axes[1,2].hist(smallest_df["LotFrontage"])
+axes[1,2].set_title("LotFrontage")
+axes[1,1].hist(smallest_df["FullBath"])
+axes[1,1].set_title("FullBath")
+axes[1,0].hist(smallest_df["BedroomAbvGr"])
+axes[1,0].set_title("BedroomAbvGr")
+
+axes[0,2].hist(smallest_df["GrLivArea"])
+axes[0,2].set_title("GrLivArea")
+axes[0,1].hist(smallest_df["GarageCars"])
+axes[0,1].set_title("GarageCars")
+axes[0,0].hist(smallest_df["GarageArea"])
+axes[0,0].set_title("GarageArea")
+figure.tight_layout()
+plt.show()
+
+
+#Now visualizing the top four variables contributing to price
+scatter_variables = ["OverallQual", "GrLivArea", "GarageCars", "GarageArea"]
+for i in scatter_variables:
+    plt.scatter(smallest_df[i], smallest_df["SalePrice"], color = 'r', alpha = 0.2)
+    plt.xlabel(i)
+    plt.ylabel("SalePrice")
+    plt.show()
+    
+    
+#Now applying machine learning models
+
+num_pipeline = Pipeline([
+    ('imputer', SimpleImputer(strategy = 'median')),
+    ('std_scaler', StandardScaler())])
+
+#Splitting data into test set and train set, and normalizing x variables
+y = smallest_df['SalePrice']
+x = smallest_df.drop(['SalePrice'], axis = 1)
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.2, random_state = 42)
+
+#Now transforming x_train data and fitting to model
+x_train = num_pipeline.fit_transform(x_train)
+linear_reg = LinearRegression()
+linear_reg.fit(x_train, y_train)
+
+#Now checking the accuracy of the model
+price_prediction = linear_reg.predict(x_train)
+lin_mse = mean_squared_error(y_train, price_prediction)
+lin_rmse = np.sqrt(lin_mse)
+print("Train :", lin_rmse)
+
+#Now transforming test data and evaluating accuracy of fitted model
+x_test = num_pipeline.fit_transform(x_test)
+
+price_prediction_test = linear_reg.predict(x_test)
+lin_mse = mean_squared_error(y_test, price_prediction_test)
+lin_rmse_test = np.sqrt(lin_mse)
+print("Test :", lin_rmse_test)
